@@ -1,7 +1,29 @@
 const API_BASE_URL = "http://127.0.0.1:8000";
 const API_URL = `${API_BASE_URL}/api/calculate`;
 const PDF_URL = `${API_BASE_URL}/api/pdf`;
-const weekdays = ["MO", "DI", "MI", "DO", "FR", "SA", "SO"];
+const monthNames = [
+  "Januar",
+  "Februar",
+  "März",
+  "April",
+  "Mai",
+  "Juni",
+  "Juli",
+  "August",
+  "September",
+  "Oktober",
+  "November",
+  "Dezember",
+];
+const weekdayNames = [
+  "Sonntag",
+  "Montag",
+  "Dienstag",
+  "Mittwoch",
+  "Donnerstag",
+  "Freitag",
+  "Samstag",
+];
 
 function createField(label, inputHtml) {
   return `
@@ -53,24 +75,106 @@ function buildPrivateFuelRows() {
   }).join("");
 }
 
+function formatDate(date) {
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function selectedMonthIndex() {
+  const value = document.getElementById("monthSelect").value;
+
+  return monthNames.indexOf(value);
+}
+
+function selectedYear() {
+  const year = Number.parseInt(document.getElementById("yearInput").value, 10);
+
+  return Number.isInteger(year) && year >= 2020 && year <= 2100
+    ? year
+    : new Date().getFullYear();
+}
+
+function daysInSelectedMonth() {
+  const monthIndex = selectedMonthIndex();
+
+  if (monthIndex < 0) {
+    return [];
+  }
+
+  const year = selectedYear();
+  const dayCount = new Date(year, monthIndex + 1, 0).getDate();
+
+  return Array.from({ length: dayCount }, (_, index) => new Date(year, monthIndex, index + 1));
+}
+
+function initializeDateControls() {
+  const now = new Date();
+  const monthSelect = document.getElementById("monthSelect");
+  const yearInput = document.getElementById("yearInput");
+
+  if (!monthSelect.value) {
+    monthSelect.value = monthNames[now.getMonth()];
+  }
+
+  if (!yearInput.value) {
+    yearInput.value = now.getFullYear();
+  }
+}
+
+function currentSchulfahrtChoices() {
+  return Array.from(document.querySelectorAll("#heinrikaRows .heinrika-row")).reduce((choices, row) => {
+    const date = row.dataset.date;
+    const select = row.querySelector("select");
+
+    if (date && select) {
+      choices[date] = select.value;
+    }
+
+    return choices;
+  }, {});
+}
+
 function buildHeinrikaRows() {
   const container = document.getElementById("heinrikaRows");
+  const existingChoices = currentSchulfahrtChoices();
+  const days = daysInSelectedMonth();
 
-  container.innerHTML = Array.from({ length: 31 }, (_, index) => {
+  if (days.length === 0) {
+    container.innerHTML = `
+      <article class="entry-row heinrika-row">
+        <div class="date-cell">
+          <strong>Bitte Monat auswählen</strong>
+          <span>Schulfahrt wird automatisch erzeugt</span>
+        </div>
+      </article>
+    `;
+    return;
+  }
+
+  container.innerHTML = days.map((date, index) => {
     const number = index + 1;
-    const weekday = weekdays[index % weekdays.length];
+    const formattedDate = formatDate(date);
+    const weekday = weekdayNames[date.getDay()];
+    const selectedValue = existingChoices[formattedDate] || "Nein";
 
     return `
-      <article class="entry-row heinrika-row">
-        ${createField("Datum", `<input type="text" name="heinrikaDatum${number}" placeholder="tt.mm.jjjj" />`)}
-        <div class="day-cell">
-          <strong>${number}</strong>
-          <span>${weekday}</span>
+      <article class="entry-row heinrika-row" data-date="${formattedDate}" data-day="${number}" data-weekday="${weekday}">
+        <div class="date-cell">
+          <span>Datum</span>
+          <strong>${formattedDate}</strong>
         </div>
+        <div class="day-cell">
+          <span>Tag</span>
+          <strong>${weekday}</strong>
+        </div>
+        <input type="hidden" name="heinrikaDatum${number}" value="${formattedDate}" />
         ${createField("Mitgefahren?", `
           <select name="heinrikaMitgefahren${number}">
-            <option>Nein</option>
-            <option>Ja</option>
+            <option${selectedValue === "Nein" ? " selected" : ""}>Nein</option>
+            <option${selectedValue === "Ja" ? " selected" : ""}>Ja</option>
           </select>
         `)}
       </article>
@@ -154,15 +258,11 @@ function collectPayload() {
         betrag: readMoney(formData, `privatBetrag${number}`),
       };
     }),
-    schulfahrt: Array.from({ length: 31 }, (_, index) => {
-      const number = index + 1;
-
-      return {
-        datum: readValue(formData, `heinrikaDatum${number}`),
-        tag: number,
-        mitgefahren: readValue(formData, `heinrikaMitgefahren${number}`),
-      };
-    }),
+    schulfahrt: Array.from(document.querySelectorAll("#heinrikaRows .heinrika-row[data-date]")).map((row) => ({
+      datum: row.dataset.date,
+      tag: Number.parseInt(row.dataset.day, 10),
+      mitgefahren: row.querySelector("select")?.value || "Nein",
+    })),
     abzuege: Array.from({ length: 10 }, (_, index) => {
       const number = index + 1;
 
@@ -298,9 +398,12 @@ async function downloadPdf(event) {
 
 buildWorkFuelRows();
 buildPrivateFuelRows();
+initializeDateControls();
 buildHeinrikaRows();
 buildDeductionRows();
 
+document.getElementById("monthSelect").addEventListener("change", buildHeinrikaRows);
+document.getElementById("yearInput").addEventListener("input", buildHeinrikaRows);
 document.getElementById("statementForm").addEventListener("submit", calculateStatement);
 document.getElementById("calculateButton").addEventListener("click", calculateStatement);
 document.getElementById("pdfButton").addEventListener("click", downloadPdf);

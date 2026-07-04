@@ -30,11 +30,25 @@
           </label>
           <label class="field">
             <span>Monat</span>
-            <input type="text" name="monat" placeholder="z. B. Januar" />
+            <select name="monat" id="monthSelect">
+              <option value="">Monat auswählen</option>
+              <option value="Januar">Januar</option>
+              <option value="Februar">Februar</option>
+              <option value="März">März</option>
+              <option value="April">April</option>
+              <option value="Mai">Mai</option>
+              <option value="Juni">Juni</option>
+              <option value="Juli">Juli</option>
+              <option value="August">August</option>
+              <option value="September">September</option>
+              <option value="Oktober">Oktober</option>
+              <option value="November">November</option>
+              <option value="Dezember">Dezember</option>
+            </select>
           </label>
           <label class="field">
             <span>Jahr</span>
-            <input type="number" name="jahr" min="2020" max="2100" placeholder="2026" />
+            <input type="number" name="jahr" id="yearInput" min="2020" max="2100" placeholder="2026" />
           </label>
           <label class="field">
             <span>Fahreranteil (%)</span>

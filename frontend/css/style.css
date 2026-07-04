@@ -273,15 +273,18 @@ select:focus {
   border-radius: 10px;
 }
 
+.date-cell,
 .day-cell {
   display: grid;
   gap: 2px;
 }
 
+.date-cell strong,
 .day-cell strong {
   font-size: 0.98rem;
 }
 
+.date-cell span,
 .day-cell span {
   color: var(--muted);
   font-size: 0.7rem;
