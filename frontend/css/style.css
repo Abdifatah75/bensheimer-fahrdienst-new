@@ -416,6 +416,11 @@ select:focus {
   font-weight: 750;
 }
 
+.pdf-area button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 @media (max-width: 760px) {
   .app {
     padding: 18px 10px 34px;

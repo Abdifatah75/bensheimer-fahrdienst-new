@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:8000/api/calculate";
+const API_BASE_URL = "http://127.0.0.1:8000";
+const API_URL = `${API_BASE_URL}/api/calculate`;
+const PDF_URL = `${API_BASE_URL}/api/pdf`;
 const weekdays = ["MO", "DI", "MI", "DO", "FR", "SA", "SO"];
 
 function createField(label, inputHtml) {
@@ -214,6 +216,22 @@ function showApiError() {
   document.getElementById("resultSection").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function showPdfError() {
+  const errorMessage = document.getElementById("errorMessage");
+
+  document.getElementById("resultSection").hidden = false;
+  errorMessage.hidden = false;
+  errorMessage.textContent = "PDF konnte nicht erstellt werden.";
+  document.getElementById("resultSection").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function filenameFromResponse(response) {
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+
+  return match ? match[1] : "Abrechnung.pdf";
+}
+
 async function calculateStatement(event) {
   event.preventDefault();
 
@@ -241,6 +259,43 @@ async function calculateStatement(event) {
   }
 }
 
+async function downloadPdf(event) {
+  event.preventDefault();
+
+  const button = document.getElementById("pdfButton");
+  button.disabled = true;
+
+  try {
+    const response = await fetch(PDF_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(collectPayload()),
+    });
+
+    if (!response.ok) {
+      throw new Error("PDF request failed");
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filenameFromResponse(response);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    document.getElementById("errorMessage").hidden = true;
+  } catch (error) {
+    showPdfError();
+  } finally {
+    button.disabled = false;
+  }
+}
+
 buildWorkFuelRows();
 buildPrivateFuelRows();
 buildHeinrikaRows();
@@ -248,3 +303,4 @@ buildDeductionRows();
 
 document.getElementById("statementForm").addEventListener("submit", calculateStatement);
 document.getElementById("calculateButton").addEventListener("click", calculateStatement);
+document.getElementById("pdfButton").addEventListener("click", downloadPdf);

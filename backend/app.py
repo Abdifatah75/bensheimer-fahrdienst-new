@@ -1,11 +1,13 @@
 from typing import Any
+import re
 
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend.calculation.formula import calculate
+from backend.pdf.pdf_export import build_pdf
 
 
 app = FastAPI(title="Bensheimer Fahrdienst API")
@@ -16,6 +18,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 
@@ -131,9 +134,8 @@ def _abzuege_dataframe(rows: list[dict[str, Any]]) -> pd.DataFrame:
     )
 
 
-@app.post("/api/calculate")
-def calculate_statement(payload: CalculationRequest) -> dict[str, Any]:
-    result = calculate(
+def _calculate_result(payload: CalculationRequest) -> dict[str, Any]:
+    return calculate(
         wochen=_wochen_dataframe(payload.wochenumsaetze),
         benzin=_benzin_dataframe(payload.benzin_arbeit, payload.benzin_privat),
         heinrika=_schulfahrt_dataframe(payload.schulfahrt),
@@ -142,9 +144,39 @@ def calculate_statement(payload: CalculationRequest) -> dict[str, Any]:
         pauschale=payload.schulfahrt_pauschale,
     )
 
+
+def _response_payload(payload: CalculationRequest, result: dict[str, Any]) -> dict[str, Any]:
     return {
         "fahrername": payload.fahrername,
         "monat": payload.monat,
         "jahr": payload.jahr,
         "result": result,
     }
+
+
+def _filename_part(value: Any, fallback: str) -> str:
+    text = str(value or fallback).strip() or fallback
+    return re.sub(r"[^A-Za-z0-9_-]+", "_", text).strip("_") or fallback
+
+
+@app.post("/api/calculate")
+def calculate_statement(payload: CalculationRequest) -> dict[str, Any]:
+    return _response_payload(payload, _calculate_result(payload))
+
+
+@app.post("/api/pdf")
+def export_pdf(payload: CalculationRequest) -> Response:
+    result = _calculate_result(payload)
+    pdf = build_pdf(payload.model_dump(), result)
+    filename = (
+        f"Abrechnung_"
+        f"{_filename_part(payload.fahrername, 'Fahrer')}_"
+        f"{_filename_part(payload.monat, 'Monat')}_"
+        f"{_filename_part(payload.jahr, 'Jahr')}.pdf"
+    )
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
