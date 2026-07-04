@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
@@ -9,15 +9,160 @@
 <body>
   <main class="app">
     <header class="hero">
-      <div class="logo">BF</div>
+      <div class="logo" aria-label="BF Logo">BF</div>
+      <p class="eyebrow">Premium Fahrerabrechnung</p>
       <h1>Bensheimer Fahrdienst</h1>
       <h2>Monatliche Fahrerabrechnung</h2>
-      <p>Monat für Monat. Klar berechnet.</p>
+      <p class="tagline">Monat für Monat. Klar berechnet.</p>
     </header>
 
-    <section class="card">
-      <h3>Neue App-Struktur ist bereit</h3>
-      <p>Hier wird später das neue Design eingebaut.</p>
+    <form class="statement-form" id="statementForm">
+      <section class="card">
+        <div class="section-heading">
+          <h3>Angaben</h3>
+          <span>Basisdaten</span>
+        </div>
+
+        <div class="field-grid">
+          <label class="field">
+            <span>Fahrername</span>
+            <input type="text" name="fahrername" autocomplete="name" />
+          </label>
+          <label class="field">
+            <span>Monat</span>
+            <input type="text" name="monat" placeholder="z. B. Januar" />
+          </label>
+          <label class="field">
+            <span>Jahr</span>
+            <input type="number" name="jahr" min="2020" max="2100" placeholder="2026" />
+          </label>
+          <label class="field">
+            <span>Fahreranteil (%)</span>
+            <input type="number" name="fahreranteil" min="0" max="100" step="0.01" />
+          </label>
+          <label class="field">
+            <span>Heinrika-Pauschale (€/Tag)</span>
+            <input type="number" name="heinrikaPauschale" min="0" step="0.01" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <h3>Wochenumsätze</h3>
+          <span>Umsatz, Trinkgeld &amp; Barzahlung</span>
+        </div>
+
+        <div class="entry-list weekly-list">
+          <article class="entry-row">
+            <strong>Woche 1</strong>
+            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche1Zeitraum" /></label>
+            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche1Umsatz" step="0.01" /></label>
+            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche1Trinkgeld" step="0.01" /></label>
+            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche1Barzahlung" step="0.01" /></label>
+          </article>
+          <article class="entry-row">
+            <strong>Woche 2</strong>
+            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche2Zeitraum" /></label>
+            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche2Umsatz" step="0.01" /></label>
+            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche2Trinkgeld" step="0.01" /></label>
+            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche2Barzahlung" step="0.01" /></label>
+          </article>
+          <article class="entry-row">
+            <strong>Woche 3</strong>
+            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche3Zeitraum" /></label>
+            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche3Umsatz" step="0.01" /></label>
+            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche3Trinkgeld" step="0.01" /></label>
+            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche3Barzahlung" step="0.01" /></label>
+          </article>
+          <article class="entry-row">
+            <strong>Woche 4</strong>
+            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche4Zeitraum" /></label>
+            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche4Umsatz" step="0.01" /></label>
+            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche4Trinkgeld" step="0.01" /></label>
+            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche4Barzahlung" step="0.01" /></label>
+          </article>
+          <article class="entry-row">
+            <strong>Woche 5</strong>
+            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche5Zeitraum" /></label>
+            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche5Umsatz" step="0.01" /></label>
+            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche5Trinkgeld" step="0.01" /></label>
+            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche5Barzahlung" step="0.01" /></label>
+          </article>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <h3>Benzin Quittungen / Arbeit</h3>
+          <span>Vom Fahrer verauslagt</span>
+        </div>
+
+        <div class="entry-list scroll-list tall-list" id="workFuelRows"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <h3>Benzin Privat</h3>
+          <span>Wird vom Lohn abgezogen</span>
+        </div>
+
+        <div class="entry-list scroll-list" id="privateFuelRows"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <h3>Heinrika</h3>
+          <span>Tage mit Mitfahrt</span>
+        </div>
+
+        <div class="entry-list scroll-list tall-list" id="heinrikaRows"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <h3>Abzüge</h3>
+          <span>Sonstige Kosten</span>
+        </div>
+
+        <div class="entry-list scroll-list" id="deductionRows"></div>
+      </section>
+
+      <button class="calculate-button" type="button" id="calculateButton">
+        <span aria-hidden="true">▦</span>
+        Abrechnung berechnen
+      </button>
+    </form>
+
+    <section class="result-section" id="resultSection" aria-live="polite" hidden>
+      <div class="net-card">
+        <span>Demo Ergebnis</span>
+        <h3>Nettolohn</h3>
+        <strong>2.148,75 €</strong>
+      </div>
+
+      <div class="card result-card">
+        <div class="section-heading">
+          <h3>Aufschlüsselung</h3>
+          <span>Prototype Werte</span>
+        </div>
+
+        <dl class="breakdown">
+          <div><dt>Fahreranteil</dt><dd>2.760,00 €</dd></div>
+          <div><dt>Trinkgeld</dt><dd>185,50 €</dd></div>
+          <div><dt>Barzahlung</dt><dd>-420,00 €</dd></div>
+          <div><dt>Benzin Privat</dt><dd>-96,75 €</dd></div>
+          <div><dt>Heinrika</dt><dd>-280,00 €</dd></div>
+        </dl>
+
+        <div class="pdf-area">
+          <div>
+            <strong>PDF Export</strong>
+            <p>Der Export wird später mit den echten Berechnungsdaten verbunden.</p>
+          </div>
+          <button type="button">PDF vorbereiten</button>
+        </div>
+      </div>
     </section>
   </main>
 
