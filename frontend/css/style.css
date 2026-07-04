@@ -580,3 +580,20 @@ select:focus {
     width: 100%;
   }
 }
+.brand-logo {
+  width: 72px;
+  height: 72px;
+  display: block;
+  margin: 0 auto 14px;
+  border-radius: 20px;
+  box-shadow: 0 14px 40px rgba(250, 204, 21, 0.14);
+}
+
+@media (max-width: 768px) {
+  .brand-logo {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    margin-bottom: 10px;
+  }
+}
