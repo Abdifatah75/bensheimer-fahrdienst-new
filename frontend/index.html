@@ -142,6 +142,24 @@
         <div class="entry-list scroll-list" id="deductionRows"></div>
       </section>
 
+      <section class="card storage-card">
+        <details>
+          <summary>Monat speichern / laden</summary>
+          <div class="storage-panel">
+            <button type="button" id="saveMonthButton">Monat speichern</button>
+            <label class="field">
+              <span>Gespeicherte Monate</span>
+              <select id="savedMonthSelect">
+                <option value="">Keine gespeicherten Monate</option>
+              </select>
+            </label>
+            <button type="button" id="loadMonthButton">Monat laden</button>
+            <button type="button" id="deleteMonthButton">Monat löschen</button>
+          </div>
+          <p class="storage-status" id="storageStatus" aria-live="polite"></p>
+        </details>
+      </section>
+
       <button class="calculate-button" type="button" id="calculateButton">
         <span aria-hidden="true">▦</span>
         Abrechnung berechnen

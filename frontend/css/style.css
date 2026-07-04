@@ -323,6 +323,48 @@ select:focus {
   opacity: 0.68;
 }
 
+.storage-card details {
+  display: grid;
+  gap: 12px;
+}
+
+.storage-card summary {
+  cursor: pointer;
+  color: var(--gold-bright);
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.storage-panel {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) minmax(220px, 1.4fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr);
+  gap: 10px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.storage-panel button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 208, 90, 0.48);
+  border-radius: 12px;
+  background: rgba(255, 208, 90, 0.08);
+  color: var(--gold-bright);
+  cursor: pointer;
+  font-weight: 750;
+  padding: 9px 12px;
+}
+
+.storage-panel button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.storage-status {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .result-section {
   margin-top: 20px;
   padding-top: 20px;
@@ -524,6 +566,10 @@ select:focus {
     min-height: 52px;
     border-radius: 16px;
     font-size: 0.96rem;
+  }
+
+  .storage-panel {
+    grid-template-columns: 1fr;
   }
 
   .pdf-area {

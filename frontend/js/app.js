@@ -1,6 +1,8 @@
 const API_BASE_URL = "http://127.0.0.1:8000";
 const API_URL = `${API_BASE_URL}/api/calculate`;
 const PDF_URL = `${API_BASE_URL}/api/pdf`;
+const MONTH_SAVE_URL = `${API_BASE_URL}/api/months/save`;
+const MONTHS_URL = `${API_BASE_URL}/api/months`;
 const monthNames = [
   "Januar",
   "Februar",
@@ -24,6 +26,7 @@ const weekdayNames = [
   "Freitag",
   "Samstag",
 ];
+let lastCalculatedResult = null;
 
 function createField(label, inputHtml) {
   return `
@@ -124,6 +127,16 @@ function initializeDateControls() {
   }
 }
 
+function choicesFromSchulfahrtRows(rows) {
+  return rows.reduce((choices, row) => {
+    if (row.datum) {
+      choices[row.datum] = row.mitgefahren || "Nein";
+    }
+
+    return choices;
+  }, {});
+}
+
 function currentSchulfahrtChoices() {
   return Array.from(document.querySelectorAll("#heinrikaRows .heinrika-row")).reduce((choices, row) => {
     const date = row.dataset.date;
@@ -137,9 +150,11 @@ function currentSchulfahrtChoices() {
   }, {});
 }
 
-function buildHeinrikaRows() {
+function buildHeinrikaRows(savedRows = null) {
   const container = document.getElementById("heinrikaRows");
-  const existingChoices = currentSchulfahrtChoices();
+  const existingChoices = savedRows
+    ? choicesFromSchulfahrtRows(savedRows)
+    : currentSchulfahrtChoices();
   const days = daysInSelectedMonth();
 
   if (days.length === 0) {
@@ -219,6 +234,14 @@ function readMoney(formData, name) {
   return readNumber(readValue(formData, name));
 }
 
+function setInputValue(name, value) {
+  const input = document.querySelector(`[name="${name}"]`);
+
+  if (input) {
+    input.value = value ?? "";
+  }
+}
+
 function collectPayload() {
   const form = document.getElementById("statementForm");
   const formData = new FormData(form);
@@ -292,6 +315,7 @@ function renderResult(data) {
   const result = data.result || {};
   const resultMeta = [data.fahrername, data.monat, data.jahr].filter(Boolean).join(" · ");
 
+  lastCalculatedResult = result;
   setResultVisibility({ showError: false });
   document.getElementById("errorMessage").textContent = "";
   document.getElementById("resultMeta").textContent = resultMeta || "Ergebnis";
@@ -325,6 +349,10 @@ function showPdfError() {
   document.getElementById("resultSection").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function showStorageStatus(message) {
+  document.getElementById("storageStatus").textContent = message;
+}
+
 function filenameFromResponse(response) {
   const disposition = response.headers.get("Content-Disposition") || "";
   const match = disposition.match(/filename="?([^"]+)"?/i);
@@ -356,6 +384,177 @@ async function calculateStatement(event) {
     showApiError();
   } finally {
     button.disabled = false;
+  }
+}
+
+async function refreshSavedMonths(selectedId = "") {
+  const select = document.getElementById("savedMonthSelect");
+
+  try {
+    const response = await fetch(MONTHS_URL);
+
+    if (!response.ok) {
+      throw new Error("Could not load saved months");
+    }
+
+    const data = await response.json();
+    const months = data.months || [];
+
+    select.innerHTML = months.length
+      ? months.map((month) => `<option value="${month.id}">${month.label}</option>`).join("")
+      : `<option value="">Keine gespeicherten Monate</option>`;
+
+    if (selectedId && months.some((month) => month.id === selectedId)) {
+      select.value = selectedId;
+    }
+  } catch (error) {
+    select.innerHTML = `<option value="">Speicher nicht erreichbar</option>`;
+  }
+}
+
+async function saveCurrentMonth(event) {
+  event.preventDefault();
+
+  const button = document.getElementById("saveMonthButton");
+  button.disabled = true;
+
+  try {
+    const response = await fetch(MONTH_SAVE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...collectPayload(),
+        calculated_result: lastCalculatedResult,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Save failed");
+    }
+
+    const data = await response.json();
+    await refreshSavedMonths(data.id);
+    showStorageStatus("Monat gespeichert.");
+  } catch (error) {
+    showStorageStatus("Monat konnte nicht gespeichert werden.");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function fillWeeklyRows(rows = []) {
+  rows.slice(0, 5).forEach((row, index) => {
+    const number = index + 1;
+    setInputValue(`woche${number}Zeitraum`, row.zeitraum || `Woche ${number}`);
+    setInputValue(`woche${number}Umsatz`, row.umsatz_mit_trinkgeld || "");
+    setInputValue(`woche${number}Trinkgeld`, row.trinkgeld || "");
+    setInputValue(`woche${number}Barzahlung`, row.barzahlung || "");
+  });
+}
+
+function fillWorkFuelRows(rows = []) {
+  rows.slice(0, 31).forEach((row, index) => {
+    const number = index + 1;
+    setInputValue(`arbeitDatum${number}`, row.datum || "");
+    setInputValue(`arbeitBemerkung${number}`, row.bemerkung || "");
+    setInputValue(`arbeitBetrag${number}`, row.betrag || "");
+    setInputValue(`arbeitZahlungsart${number}`, row.zahlungsart || "Bar");
+  });
+}
+
+function fillPrivateFuelRows(rows = []) {
+  rows.slice(0, 10).forEach((row, index) => {
+    const number = index + 1;
+    setInputValue(`privatDatum${number}`, row.datum || "");
+    setInputValue(`privatBemerkung${number}`, row.bemerkung || "");
+    setInputValue(`privatBetrag${number}`, row.betrag || "");
+  });
+}
+
+function fillDeductionRows(rows = []) {
+  rows.slice(0, 10).forEach((row, index) => {
+    const number = index + 1;
+    setInputValue(`abzugBezeichnung${number}`, row.bezeichnung || "");
+    setInputValue(`abzugBetrag${number}`, row.betrag || "");
+  });
+}
+
+function loadMonthIntoForm(month) {
+  setInputValue("fahrername", month.fahrername || "");
+  setInputValue("monat", month.monat || "");
+  setInputValue("jahr", month.jahr || "");
+  setInputValue("fahreranteil", month.fahreranteil || "");
+  setInputValue("heinrikaPauschale", month.schulfahrt_pauschale || "");
+
+  buildWorkFuelRows();
+  buildPrivateFuelRows();
+  buildDeductionRows();
+  buildHeinrikaRows(month.schulfahrt || []);
+  fillWeeklyRows(month.wochenumsaetze || []);
+  fillWorkFuelRows(month.benzin_arbeit || []);
+  fillPrivateFuelRows(month.benzin_privat || []);
+  fillDeductionRows(month.abzuege || []);
+
+  lastCalculatedResult = month.calculated_result || null;
+  if (lastCalculatedResult) {
+    renderResult({
+      fahrername: month.fahrername,
+      monat: month.monat,
+      jahr: month.jahr,
+      result: lastCalculatedResult,
+    });
+  } else {
+    document.getElementById("resultSection").hidden = true;
+  }
+}
+
+async function loadSelectedMonth(event) {
+  event.preventDefault();
+
+  const select = document.getElementById("savedMonthSelect");
+  if (!select.value) {
+    showStorageStatus("Bitte einen gespeicherten Monat auswählen.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${MONTHS_URL}/${encodeURIComponent(select.value)}`);
+
+    if (!response.ok) {
+      throw new Error("Load failed");
+    }
+
+    loadMonthIntoForm(await response.json());
+    showStorageStatus("Monat geladen.");
+  } catch (error) {
+    showStorageStatus("Monat konnte nicht geladen werden.");
+  }
+}
+
+async function deleteSelectedMonth(event) {
+  event.preventDefault();
+
+  const select = document.getElementById("savedMonthSelect");
+  if (!select.value) {
+    showStorageStatus("Bitte einen gespeicherten Monat auswählen.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${MONTHS_URL}/${encodeURIComponent(select.value)}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("Delete failed");
+    }
+
+    await refreshSavedMonths();
+    showStorageStatus("Monat gelöscht.");
+  } catch (error) {
+    showStorageStatus("Monat konnte nicht gelöscht werden.");
   }
 }
 
@@ -401,9 +600,13 @@ buildPrivateFuelRows();
 initializeDateControls();
 buildHeinrikaRows();
 buildDeductionRows();
+refreshSavedMonths();
 
-document.getElementById("monthSelect").addEventListener("change", buildHeinrikaRows);
-document.getElementById("yearInput").addEventListener("input", buildHeinrikaRows);
+document.getElementById("monthSelect").addEventListener("change", () => buildHeinrikaRows());
+document.getElementById("yearInput").addEventListener("input", () => buildHeinrikaRows());
+document.getElementById("saveMonthButton").addEventListener("click", saveCurrentMonth);
+document.getElementById("loadMonthButton").addEventListener("click", loadSelectedMonth);
+document.getElementById("deleteMonthButton").addEventListener("click", deleteSelectedMonth);
 document.getElementById("statementForm").addEventListener("submit", calculateStatement);
 document.getElementById("calculateButton").addEventListener("click", calculateStatement);
 document.getElementById("pdfButton").addEventListener("click", downloadPdf);

@@ -2,12 +2,13 @@ from typing import Any
 import re
 
 import pandas as pd
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend.calculation.formula import calculate
 from backend.pdf.pdf_export import build_pdf
+from backend.storage.database import delete_month, list_months, load_month, save_month
 
 
 app = FastAPI(title="Bensheimer Fahrdienst API")
@@ -33,6 +34,10 @@ class CalculationRequest(BaseModel):
     benzin_privat: list[dict[str, Any]] = Field(default_factory=list)
     schulfahrt: list[dict[str, Any]] = Field(default_factory=list)
     abzuege: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class MonthSaveRequest(CalculationRequest):
+    calculated_result: dict[str, Any] | None = None
 
 
 def _number(value: Any) -> float:
@@ -180,3 +185,32 @@ def export_pdf(payload: CalculationRequest) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@app.post("/api/months/save")
+def save_month_endpoint(payload: MonthSaveRequest) -> dict[str, Any]:
+    saved = save_month(payload.model_dump())
+    return {"id": saved["id"], "saved_at": saved["saved_at"], "month": saved}
+
+
+@app.get("/api/months")
+def list_months_endpoint() -> dict[str, Any]:
+    return {"months": list_months()}
+
+
+@app.get("/api/months/{month_id}")
+def load_month_endpoint(month_id: str) -> dict[str, Any]:
+    month = load_month(month_id)
+
+    if month is None:
+        raise HTTPException(status_code=404, detail="Saved month not found")
+
+    return month
+
+
+@app.delete("/api/months/{month_id}")
+def delete_month_endpoint(month_id: str) -> dict[str, Any]:
+    if not delete_month(month_id):
+        raise HTTPException(status_code=404, detail="Saved month not found")
+
+    return {"deleted": True, "id": month_id}
