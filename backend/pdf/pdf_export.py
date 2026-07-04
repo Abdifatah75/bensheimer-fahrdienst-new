@@ -7,6 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    KeepTogether,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -48,6 +49,10 @@ def _section_title(text: str, styles: dict[str, ParagraphStyle]) -> Paragraph:
     return Paragraph(text, styles["SectionTitle"])
 
 
+def _section(title: str, table: Table, styles: dict[str, ParagraphStyle]) -> KeepTogether:
+    return KeepTogether([_section_title(title, styles), table])
+
+
 def _summary_table(rows: list[list[str]]) -> Table:
     table = Table(rows, colWidths=[74 * mm, 45 * mm, 45 * mm], hAlign="LEFT")
     table.setStyle(
@@ -70,6 +75,19 @@ def _summary_table(rows: list[list[str]]) -> Table:
         )
     )
     return table
+
+
+def _deduction_rows(rows: list[dict[str, Any]], total: Any) -> list[list[str]]:
+    details = [
+        [row.get("bezeichnung") or "Abzug", "", euro(row.get("betrag"))]
+        for row in rows
+        if (row.get("bezeichnung") or "").strip() or _number(row.get("betrag")) > 0
+    ]
+
+    if not details:
+        details = [["Keine Abzüge erfasst", "", euro(0)]]
+
+    return [["Bezeichnung", "", "Betrag"], *details, ["Summe Abzüge", "", euro(total)]]
 
 
 def _key_value_table(rows: list[list[str]]) -> Table:
@@ -249,60 +267,72 @@ def build_pdf(payload: dict[str, Any], result: dict[str, Any]) -> bytes:
                 ]
             ),
         ),
-        _section_title("Aufschlüsselung", styles),
-        _summary_table(
-            [
-                ["Position", "Wert", "Betrag"],
-                ["Umsatz mit Trinkgeld", "", euro(result.get("umsatz_mit_tg"))],
-                ["Trinkgeld", "", euro(result.get("trinkgeld"))],
-                ["Fahreranteil", "", euro(result.get("fahreranteil"))],
-                ["Barzahlung", "", euro(-result.get("barzahlung_ges", 0))],
-                ["Benzin Arbeit", "", euro(result.get("benzin_barzahlung"))],
-                ["Benzin Privat", "", euro(-result.get("benzin_privat", 0))],
-                ["Abzüge", "", euro(-result.get("summe_abzuege", 0))],
-                ["Schulfahrt", f"{result.get('anzahl_tage', 0)} Tage", euro(result.get("heinrika_summe"))],
-            ]
+        _section(
+            "Aufschlüsselung",
+            _summary_table(
+                [
+                    ["Position", "Wert", "Betrag"],
+                    ["Umsatz mit Trinkgeld", "", euro(result.get("umsatz_mit_tg"))],
+                    ["Trinkgeld", "", euro(result.get("trinkgeld"))],
+                    ["Fahreranteil", "", euro(result.get("fahreranteil"))],
+                    ["Barzahlung", "", euro(-result.get("barzahlung_ges", 0))],
+                    ["Benzin Arbeit", "", euro(result.get("benzin_barzahlung"))],
+                    ["Benzin Privat", "", euro(-result.get("benzin_privat", 0))],
+                    ["Abzüge", "", euro(-result.get("summe_abzuege", 0))],
+                    ["Schulfahrt", f"{result.get('anzahl_tage', 0)} Tage", euro(result.get("heinrika_summe"))],
+                ]
+            ),
+            styles,
         ),
-        _section_title("Umsatz / Wochenumsätze", styles),
-        _summary_table(
-            [
-                ["Kennzahl", "Wert", "Betrag"],
-                ["Umsatz mit Trinkgeld", "", euro(result.get("umsatz_mit_tg"))],
-                ["Umsatz ohne Trinkgeld", "", euro(result.get("umsatz_ohne_tg"))],
-                ["Barzahlung gesamt", "", euro(result.get("barzahlung_ges"))],
-            ]
+        _section(
+            "Umsatz / Wochenumsätze",
+            _summary_table(
+                [
+                    ["Kennzahl", "Wert", "Betrag"],
+                    ["Umsatz mit Trinkgeld", "", euro(result.get("umsatz_mit_tg"))],
+                    ["Umsatz ohne Trinkgeld", "", euro(result.get("umsatz_ohne_tg"))],
+                    ["Barzahlung gesamt", "", euro(result.get("barzahlung_ges"))],
+                ]
+            ),
+            styles,
         ),
-        _section_title("Benzin Quittungen / Arbeit", styles),
-        _summary_table(
-            [
-                ["Kennzahl", "Wert", "Betrag"],
-                ["Erfasste Quittungen", str(_count_positive(work_fuel)), euro(_sum_amount(work_fuel))],
-                ["Barzahlung erstattet", "", euro(result.get("benzin_barzahlung"))],
-            ]
+        _section(
+            "Benzin Quittungen / Arbeit",
+            _summary_table(
+                [
+                    ["Kennzahl", "Wert", "Betrag"],
+                    ["Erfasste Quittungen", str(_count_positive(work_fuel)), euro(_sum_amount(work_fuel))],
+                    ["Barzahlung erstattet", "", euro(result.get("benzin_barzahlung"))],
+                ]
+            ),
+            styles,
         ),
-        _section_title("Benzin Privat", styles),
-        _summary_table(
-            [
-                ["Kennzahl", "Wert", "Betrag"],
-                ["Erfasste Privatfahrten", str(_count_positive(private_fuel)), euro(_sum_amount(private_fuel))],
-                ["Vom Lohn abgezogen", "", euro(result.get("benzin_privat"))],
-            ]
+        _section(
+            "Benzin Privat",
+            _summary_table(
+                [
+                    ["Kennzahl", "Wert", "Betrag"],
+                    ["Erfasste Privatfahrten", str(_count_positive(private_fuel)), euro(_sum_amount(private_fuel))],
+                    ["Vom Lohn abgezogen", "", euro(result.get("benzin_privat"))],
+                ]
+            ),
+            styles,
         ),
-        _section_title("Schulfahrt", styles),
-        _summary_table(
-            [
-                ["Kennzahl", "Wert", "Betrag"],
-                ["Mitgefahrene Tage", str(school_days), euro(result.get("heinrika_summe"))],
-                ["Pauschale pro Tag", "", euro(payload.get("schulfahrt_pauschale"))],
-            ]
+        _section(
+            "Schulfahrt",
+            _summary_table(
+                [
+                    ["Kennzahl", "Wert", "Betrag"],
+                    ["Mitgefahrene Tage", str(school_days), euro(result.get("heinrika_summe"))],
+                    ["Pauschale pro Tag", "", euro(payload.get("schulfahrt_pauschale"))],
+                ]
+            ),
+            styles,
         ),
-        _section_title("Abzüge", styles),
-        _summary_table(
-            [
-                ["Kennzahl", "Wert", "Betrag"],
-                ["Erfasste Abzüge", str(_count_positive(deductions)), euro(_sum_amount(deductions))],
-                ["Summe Abzüge", "", euro(result.get("summe_abzuege"))],
-            ]
+        _section(
+            "Abzüge",
+            _summary_table(_deduction_rows(deductions, result.get("summe_abzuege"))),
+            styles,
         ),
     ]
 
