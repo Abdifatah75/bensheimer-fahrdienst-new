@@ -1,8 +1,7 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
-const API_URL = `${API_BASE_URL}/api/calculate`;
-const PDF_URL = `${API_BASE_URL}/api/pdf`;
-const MONTH_SAVE_URL = `${API_BASE_URL}/api/months/save`;
-const MONTHS_URL = `${API_BASE_URL}/api/months`;
+const API_URL = "/api/calculate";
+const PDF_URL = "/api/pdf";
+const MONTH_SAVE_URL = "/api/months/save";
+const MONTHS_URL = "/api/months";
 const monthNames = [
   "Januar",
   "Februar",
@@ -610,3 +609,4 @@ document.getElementById("deleteMonthButton").addEventListener("click", deleteSel
 document.getElementById("statementForm").addEventListener("submit", calculateStatement);
 document.getElementById("calculateButton").addEventListener("click", calculateStatement);
 document.getElementById("pdfButton").addEventListener("click", downloadPdf);
+

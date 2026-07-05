@@ -1,15 +1,22 @@
+from pathlib import Path
 from typing import Any
 import re
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.calculation.formula import calculate
 from backend.pdf.pdf_export import build_pdf
 from backend.storage.database import delete_month, list_months, load_month, save_month
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+INDEX_FILE = FRONTEND_DIR / "index.html"
 
 app = FastAPI(title="Bensheimer Fahrdienst API")
 
@@ -21,6 +28,13 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
+
+if (FRONTEND_DIR / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
+if (FRONTEND_DIR / "css").is_dir():
+    app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
+if (FRONTEND_DIR / "js").is_dir():
+    app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
 
 
 class CalculationRequest(BaseModel):
@@ -162,6 +176,19 @@ def _response_payload(payload: CalculationRequest, result: dict[str, Any]) -> di
 def _filename_part(value: Any, fallback: str) -> str:
     text = str(value or fallback).strip() or fallback
     return re.sub(r"[^A-Za-z0-9_-]+", "_", text).strip("_") or fallback
+
+
+@app.get("/")
+def serve_frontend() -> FileResponse:
+    if not INDEX_FILE.exists():
+        raise HTTPException(status_code=404, detail="frontend/index.html not found")
+
+    return FileResponse(INDEX_FILE)
+
+
+@app.get("/api/health")
+def health_check() -> dict[str, str]:
+    return {"status": "ok"}
 
 
 @app.post("/api/calculate")
