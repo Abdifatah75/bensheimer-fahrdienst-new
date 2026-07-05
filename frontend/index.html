@@ -7,9 +7,10 @@
   <link rel="icon" type="image/svg+xml" href="assets/logo/favicon.svg" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body data-theme="dark">
   <main class="app">
     <header class="hero">
+      <button class="theme-toggle" type="button" id="themeToggle" aria-label="Theme wechseln">🌙 Dark</button>
       <div class="logo" aria-label="BF Logo"><img class="brand-logo" src="assets/logo/bf-logo.svg" alt="Bensheimer Fahrdienst Logo" /></div>
       <p class="eyebrow">Premium Fahrerabrechnung</p>
       <h1>Bensheimer Fahrdienst</h1>
@@ -18,13 +19,13 @@
     </header>
 
     <form class="statement-form" id="statementForm">
-      <section class="card">
+      <section class="card primary-card">
         <div class="section-heading">
           <h3>Angaben</h3>
           <span>Basisdaten</span>
         </div>
 
-        <div class="field-grid">
+        <div class="field-grid compact-grid">
           <label class="field">
             <span>Fahrername</span>
             <input type="text" name="fahrername" autocomplete="name" />
@@ -62,42 +63,42 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="card primary-card">
         <div class="section-heading">
           <h3>Wochenumsätze</h3>
-          <span>Umsatz, Trinkgeld &amp; Barzahlung</span>
+          <span>Pflichtbereich</span>
         </div>
 
         <div class="entry-list weekly-list">
-          <article class="entry-row">
+          <article class="entry-row weekly-row">
             <strong>Woche 1</strong>
             <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche1Zeitraum" /></label>
             <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche1Umsatz" step="0.01" /></label>
             <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche1Trinkgeld" step="0.01" /></label>
             <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche1Barzahlung" step="0.01" /></label>
           </article>
-          <article class="entry-row">
+          <article class="entry-row weekly-row">
             <strong>Woche 2</strong>
             <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche2Zeitraum" /></label>
             <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche2Umsatz" step="0.01" /></label>
             <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche2Trinkgeld" step="0.01" /></label>
             <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche2Barzahlung" step="0.01" /></label>
           </article>
-          <article class="entry-row">
+          <article class="entry-row weekly-row">
             <strong>Woche 3</strong>
             <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche3Zeitraum" /></label>
             <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche3Umsatz" step="0.01" /></label>
             <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche3Trinkgeld" step="0.01" /></label>
             <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche3Barzahlung" step="0.01" /></label>
           </article>
-          <article class="entry-row">
+          <article class="entry-row weekly-row">
             <strong>Woche 4</strong>
             <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche4Zeitraum" /></label>
             <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche4Umsatz" step="0.01" /></label>
             <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche4Trinkgeld" step="0.01" /></label>
             <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche4Barzahlung" step="0.01" /></label>
           </article>
-          <article class="entry-row">
+          <article class="entry-row weekly-row">
             <strong>Woche 5</strong>
             <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche5Zeitraum" /></label>
             <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche5Umsatz" step="0.01" /></label>
@@ -107,43 +108,74 @@
         </div>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
-          <h3>Benzin Quittungen / Arbeit</h3>
-          <span>Vom Fahrer verauslagt</span>
+      <button class="calculate-button" type="button" id="calculateButton">
+        <span aria-hidden="true">▦</span>
+        Abrechnung berechnen
+      </button>
+
+      <section class="result-section" id="resultSection" aria-live="polite" hidden>
+        <div class="error-message" id="errorMessage" hidden></div>
+
+        <div class="net-card">
+          <span id="resultMeta">Ergebnis</span>
+          <h3>Nettolohn</h3>
+          <strong id="nettolohnValue">0,00 €</strong>
         </div>
 
-        <div class="entry-list scroll-list tall-list" id="workFuelRows"></div>
-      </section>
+        <div class="card result-card">
+          <div class="section-heading">
+            <h3>Aufschlüsselung</h3>
+            <span>Berechnete Werte</span>
+          </div>
 
-      <section class="card">
-        <div class="section-heading">
-          <h3>Benzin Privat</h3>
-          <span>Wird vom Lohn abgezogen</span>
+          <dl class="breakdown" id="breakdownList"></dl>
+
+          <div class="pdf-area">
+            <div>
+              <strong>PDF Export</strong>
+              <p>Erstellt die monatliche Fahrerabrechnung als PDF.</p>
+            </div>
+            <button type="button" id="pdfButton">PDF erstellen</button>
+          </div>
         </div>
-
-        <div class="entry-list scroll-list" id="privateFuelRows"></div>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
-          <h3>Schulfahrt</h3>
-          <span>Tage mit Mitfahrt</span>
-        </div>
-
-        <div class="entry-list scroll-list tall-list" id="heinrikaRows"></div>
+      <section class="card optional-card">
+        <details>
+          <summary>Benzin hinzufügen</summary>
+          <p class="optional-hint">Nur Beträge erfassen. Diese werden als Arbeits-Benzin / Barzahlung an die bestehende Formel übergeben.</p>
+          <div class="entry-list simple-list" id="workFuelRows"></div>
+          <button class="secondary-button" type="button" id="addWorkFuelButton">Benzin hinzufügen</button>
+        </details>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
-          <h3>Abzüge</h3>
-          <span>Sonstige Kosten</span>
-        </div>
-
-        <div class="entry-list scroll-list" id="deductionRows"></div>
+      <section class="card optional-card">
+        <details>
+          <summary>Benzin Privat hinzufügen</summary>
+          <p class="optional-hint">Optional. Leere Zeilen zählen automatisch als 0.</p>
+          <div class="entry-list simple-list" id="privateFuelRows"></div>
+          <button class="secondary-button" type="button" id="addPrivateFuelButton">Benzin Privat hinzufügen</button>
+        </details>
       </section>
 
-      <section class="card storage-card">
+      <section class="card optional-card">
+        <details>
+          <summary>Schulfahrt hinzufügen / bearbeiten</summary>
+          <p class="optional-hint">Wird aus Monat und Jahr erzeugt. Standard ist Nein.</p>
+          <div class="entry-list scroll-list tall-list" id="heinrikaRows"></div>
+        </details>
+      </section>
+
+      <section class="card optional-card">
+        <details>
+          <summary>Abzüge hinzufügen</summary>
+          <p class="optional-hint">Bezeichnung und Betrag erscheinen auch in der PDF-Abrechnung.</p>
+          <div class="entry-list simple-list" id="deductionRows"></div>
+          <button class="secondary-button" type="button" id="addDeductionButton">Abzug hinzufügen</button>
+        </details>
+      </section>
+
+      <section class="card storage-card optional-card">
         <details>
           <summary>Monat speichern / laden</summary>
           <div class="storage-panel">
@@ -160,46 +192,10 @@
           <p class="storage-status" id="storageStatus" aria-live="polite"></p>
         </details>
       </section>
-
-      <button class="calculate-button" type="button" id="calculateButton">
-        <span aria-hidden="true">▦</span>
-        Abrechnung berechnen
-      </button>
     </form>
-
-    <section class="result-section" id="resultSection" aria-live="polite" hidden>
-      <div class="error-message" id="errorMessage" hidden></div>
-
-      <div class="net-card">
-        <span id="resultMeta">Ergebnis</span>
-        <h3>Nettolohn</h3>
-        <strong id="nettolohnValue">0,00 €</strong>
-      </div>
-
-      <div class="card result-card">
-        <div class="section-heading">
-          <h3>Aufschlüsselung</h3>
-          <span>Berechnete Werte</span>
-        </div>
-
-        <dl class="breakdown" id="breakdownList">
-          <div><dt>Fahreranteil</dt><dd>0,00 €</dd></div>
-          <div><dt>Barzahlung</dt><dd>0,00 €</dd></div>
-          <div><dt>Benzin Arbeit</dt><dd>0,00 €</dd></div>
-          <div><dt>Abzüge</dt><dd>0,00 €</dd></div>
-          <div><dt>Schulfahrt</dt><dd>0,00 €</dd></div>
-        </dl>
-
-        <div class="pdf-area">
-          <div>
-            <strong>PDF Export</strong>
-            <p>Erstellt die monatliche Fahrerabrechnung als PDF.</p>
-          </div>
-          <button type="button" id="pdfButton">PDF erstellen</button>
-        </div>
-      </div>
-    </section>
   </main>
+
+  <button class="sticky-calculate" type="button" id="stickyCalculateButton">Abrechnung berechnen</button>
 
   <script src="js/app.js"></script>
 </body>

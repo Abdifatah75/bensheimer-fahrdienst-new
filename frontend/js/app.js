@@ -2,6 +2,7 @@ const API_URL = "/api/calculate";
 const PDF_URL = "/api/pdf";
 const MONTH_SAVE_URL = "/api/months/save";
 const MONTHS_URL = "/api/months";
+const THEME_KEY = "bf-theme";
 const monthNames = [
   "Januar",
   "Februar",
@@ -26,6 +27,9 @@ const weekdayNames = [
   "Samstag",
 ];
 let lastCalculatedResult = null;
+let workFuelRowCount = 0;
+let privateFuelRowCount = 0;
+let deductionRowCount = 0;
 
 function createField(label, inputHtml) {
   return `
@@ -36,44 +40,123 @@ function createField(label, inputHtml) {
   `;
 }
 
-function buildWorkFuelRows() {
-  const container = document.getElementById("workFuelRows");
+function readNumber(value) {
+  if (!value) {
+    return 0;
+  }
 
-  container.innerHTML = Array.from({ length: 31 }, (_, index) => {
-    const number = index + 1;
+  const normalized = value.includes(",")
+    ? value.replaceAll(".", "").replace(",", ".")
+    : value;
+  const parsed = Number.parseFloat(normalized);
 
-    return `
-      <article class="entry-row work-row">
-        <strong>#${number}</strong>
-        ${createField("Datum", `<input type="text" name="arbeitDatum${number}" placeholder="tt.mm.jjjj" />`)}
-        ${createField("Bemerkung / Tankstelle", `<input type="text" name="arbeitBemerkung${number}" placeholder="z. B. Shell A5" />`)}
-        ${createField("Betrag (€)", `<input type="number" name="arbeitBetrag${number}" step="0.01" />`)}
-        ${createField("Zahlungsart", `
-          <select name="arbeitZahlungsart${number}">
-            <option>Barzahlung</option>
-            <option>Privat</option>
-          </select>
-        `)}
-      </article>
-    `;
-  }).join("");
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function buildPrivateFuelRows() {
-  const container = document.getElementById("privateFuelRows");
+function readValue(formData, name) {
+  return String(formData.get(name) || "").trim();
+}
 
-  container.innerHTML = Array.from({ length: 10 }, (_, index) => {
-    const number = index + 1;
+function readMoney(formData, name) {
+  return readNumber(readValue(formData, name));
+}
 
-    return `
-      <article class="entry-row private-row">
+function setInputValue(name, value) {
+  const input = document.querySelector(`[name="${name}"]`);
+
+  if (input) {
+    input.value = value ?? "";
+  }
+}
+
+function formatEuro(value) {
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(Number(value || 0));
+}
+
+function setTheme(theme) {
+  const selected = theme === "light" ? "light" : "dark";
+  document.body.dataset.theme = selected;
+  localStorage.setItem(THEME_KEY, selected);
+
+  const button = document.getElementById("themeToggle");
+  if (button) {
+    button.textContent = selected === "light" ? "☀️ Light" : "🌙 Dark";
+  }
+}
+
+function initializeTheme() {
+  setTheme(localStorage.getItem(THEME_KEY) || "dark");
+}
+
+function toggleTheme() {
+  setTheme(document.body.dataset.theme === "light" ? "dark" : "light");
+}
+
+function addWorkFuelRow(value = "") {
+  const container = document.getElementById("workFuelRows");
+  if (!container) return;
+
+  workFuelRowCount += 1;
+  const number = workFuelRowCount;
+  container.insertAdjacentHTML(
+    "beforeend",
+    `
+      <article class="entry-row amount-row work-row">
         <strong>#${number}</strong>
-        ${createField("Datum", `<input type="text" name="privatDatum${number}" placeholder="tt.mm.jjjj" />`)}
-        ${createField("Fahrt / Ort / Bemerkung", `<input type="text" name="privatBemerkung${number}" placeholder="z. B. Privatfahrt" />`)}
-        ${createField("Betrag (€)", `<input type="number" name="privatBetrag${number}" step="0.01" />`)}
+        ${createField("Betrag (€)", `<input type="number" name="arbeitBetrag${number}" step="0.01" value="${value}" />`)}
       </article>
-    `;
-  }).join("");
+    `,
+  );
+}
+
+function addPrivateFuelRow(value = "") {
+  const container = document.getElementById("privateFuelRows");
+  if (!container) return;
+
+  privateFuelRowCount += 1;
+  const number = privateFuelRowCount;
+  container.insertAdjacentHTML(
+    "beforeend",
+    `
+      <article class="entry-row amount-row private-row">
+        <strong>#${number}</strong>
+        ${createField("Betrag (€)", `<input type="number" name="privatBetrag${number}" step="0.01" value="${value}" />`)}
+      </article>
+    `,
+  );
+}
+
+function addDeductionRow(row = {}) {
+  const container = document.getElementById("deductionRows");
+  if (!container) return;
+
+  deductionRowCount += 1;
+  const number = deductionRowCount;
+  container.insertAdjacentHTML(
+    "beforeend",
+    `
+      <article class="entry-row deduction-row">
+        <strong>#${number}</strong>
+        ${createField("Bezeichnung", `<input type="text" name="abzugBezeichnung${number}" value="${row.bezeichnung || ""}" />`)}
+        ${createField("Betrag (€)", `<input type="number" name="abzugBetrag${number}" step="0.01" value="${row.betrag || ""}" />`)}
+      </article>
+    `,
+  );
+}
+
+function resetOptionalRows() {
+  workFuelRowCount = 0;
+  privateFuelRowCount = 0;
+  deductionRowCount = 0;
+  document.getElementById("workFuelRows").innerHTML = "";
+  document.getElementById("privateFuelRows").innerHTML = "";
+  document.getElementById("deductionRows").innerHTML = "";
+  addWorkFuelRow();
+  addPrivateFuelRow();
+  addDeductionRow();
 }
 
 function formatDate(date) {
@@ -85,13 +168,13 @@ function formatDate(date) {
 }
 
 function selectedMonthIndex() {
-  const value = document.getElementById("monthSelect").value;
+  const value = document.getElementById("monthSelect")?.value || "";
 
   return monthNames.indexOf(value);
 }
 
 function selectedYear() {
-  const year = Number.parseInt(document.getElementById("yearInput").value, 10);
+  const year = Number.parseInt(document.getElementById("yearInput")?.value, 10);
 
   return Number.isInteger(year) && year >= 2020 && year <= 2100
     ? year
@@ -116,11 +199,11 @@ function initializeDateControls() {
   const monthSelect = document.getElementById("monthSelect");
   const yearInput = document.getElementById("yearInput");
 
-  if (!monthSelect.value) {
+  if (monthSelect && !monthSelect.value) {
     monthSelect.value = monthNames[now.getMonth()];
   }
 
-  if (!yearInput.value) {
+  if (yearInput && !yearInput.value) {
     yearInput.value = now.getFullYear();
   }
 }
@@ -150,6 +233,8 @@ function currentSchulfahrtChoices() {
 
 function buildHeinrikaRows(savedRows = null) {
   const container = document.getElementById("heinrikaRows");
+  if (!container) return;
+
   const existingChoices = savedRows
     ? choicesFromSchulfahrtRows(savedRows)
     : currentSchulfahrtChoices();
@@ -183,7 +268,6 @@ function buildHeinrikaRows(savedRows = null) {
           <span>Tag</span>
           <strong>${weekday}</strong>
         </div>
-        <input type="hidden" name="heinrikaDatum${number}" value="${formattedDate}" />
         ${createField("Mitgefahren?", `
           <select name="heinrikaMitgefahren${number}">
             <option${selectedValue === "Nein" ? " selected" : ""}>Nein</option>
@@ -193,51 +277,6 @@ function buildHeinrikaRows(savedRows = null) {
       </article>
     `;
   }).join("");
-}
-
-function buildDeductionRows() {
-  const container = document.getElementById("deductionRows");
-
-  container.innerHTML = Array.from({ length: 10 }, (_, index) => {
-    const number = index + 1;
-
-    return `
-      <article class="entry-row deduction-row">
-        <strong>#${number}</strong>
-        ${createField("Bezeichnung", `<input type="text" name="abzugBezeichnung${number}" />`)}
-        ${createField("Betrag (€)", `<input type="number" name="abzugBetrag${number}" step="0.01" />`)}
-      </article>
-    `;
-  }).join("");
-}
-
-function readNumber(value) {
-  if (!value) {
-    return 0;
-  }
-
-  const normalized = value.includes(",")
-    ? value.replaceAll(".", "").replace(",", ".")
-    : value;
-  const parsed = Number.parseFloat(normalized);
-
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function readValue(formData, name) {
-  return String(formData.get(name) || "").trim();
-}
-
-function readMoney(formData, name) {
-  return readNumber(readValue(formData, name));
-}
-
-function setInputValue(name, value) {
-  const input = document.querySelector(`[name="${name}"]`);
-
-  if (input) {
-    input.value = value ?? "";
-  }
 }
 
 function collectPayload() {
@@ -260,31 +299,23 @@ function collectPayload() {
         barzahlung: readMoney(formData, `woche${number}Barzahlung`),
       };
     }),
-    benzin_arbeit: Array.from({ length: 31 }, (_, index) => {
-      const number = index + 1;
-
-      return {
-        datum: readValue(formData, `arbeitDatum${number}`),
-        bemerkung: readValue(formData, `arbeitBemerkung${number}`),
-        betrag: readMoney(formData, `arbeitBetrag${number}`),
-        zahlungsart: readValue(formData, `arbeitZahlungsart${number}`),
-      };
-    }),
-    benzin_privat: Array.from({ length: 10 }, (_, index) => {
-      const number = index + 1;
-
-      return {
-        datum: readValue(formData, `privatDatum${number}`),
-        bemerkung: readValue(formData, `privatBemerkung${number}`),
-        betrag: readMoney(formData, `privatBetrag${number}`),
-      };
-    }),
+    benzin_arbeit: Array.from(document.querySelectorAll('#workFuelRows input[name^="arbeitBetrag"]')).map((input) => ({
+      datum: "",
+      bemerkung: "",
+      betrag: readNumber(input.value),
+      zahlungsart: "Barzahlung",
+    })),
+    benzin_privat: Array.from(document.querySelectorAll('#privateFuelRows input[name^="privatBetrag"]')).map((input) => ({
+      datum: "",
+      bemerkung: "",
+      betrag: readNumber(input.value),
+    })),
     schulfahrt: Array.from(document.querySelectorAll("#heinrikaRows .heinrika-row[data-date]")).map((row) => ({
       datum: row.dataset.date,
       tag: Number.parseInt(row.dataset.day, 10),
       mitgefahren: row.querySelector("select")?.value || "Nein",
     })),
-    abzuege: Array.from({ length: 10 }, (_, index) => {
+    abzuege: Array.from({ length: deductionRowCount }, (_, index) => {
       const number = index + 1;
 
       return {
@@ -293,13 +324,6 @@ function collectPayload() {
       };
     }),
   };
-}
-
-function formatEuro(value) {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-  }).format(Number(value || 0));
 }
 
 function setResultVisibility({ showError }) {
@@ -334,7 +358,7 @@ function renderResult(data) {
 
 function showApiError() {
   setResultVisibility({ showError: true });
-  document.getElementById("errorMessage").textContent = "Backend nicht erreichbar. Bitte API starten.";
+  document.getElementById("errorMessage").textContent = "Berechnung nicht möglich. Bitte Verbindung prüfen und erneut versuchen.";
   document.getElementById("resultSection").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -365,10 +389,8 @@ function filenameFromResponse(response) {
 async function calculateStatement(event) {
   event?.preventDefault();
 
-  const button = document.getElementById("calculateButton");
-  if (button) {
-    button.disabled = true;
-  }
+  const buttons = [document.getElementById("calculateButton"), document.getElementById("stickyCalculateButton")].filter(Boolean);
+  buttons.forEach((button) => { button.disabled = true; });
 
   try {
     const response = await fetch(API_URL, {
@@ -388,9 +410,7 @@ async function calculateStatement(event) {
     console.error("Calculate API failed", error);
     showApiError();
   } finally {
-    if (button) {
-      button.disabled = false;
-    }
+    buttons.forEach((button) => { button.disabled = false; });
   }
 }
 
@@ -419,7 +439,7 @@ async function refreshSavedMonths(selectedId = "") {
       select.value = selectedId;
     }
   } catch (error) {
-    select.innerHTML = `<option value="">Speicher nicht erreichbar</option>`;
+    select.innerHTML = `<option value="">Speicher optional / nicht erreichbar</option>`;
   }
 }
 
@@ -469,30 +489,19 @@ function fillWeeklyRows(rows = []) {
   });
 }
 
-function fillWorkFuelRows(rows = []) {
-  rows.slice(0, 31).forEach((row, index) => {
-    const number = index + 1;
-    setInputValue(`arbeitDatum${number}`, row.datum || "");
-    setInputValue(`arbeitBemerkung${number}`, row.bemerkung || "");
-    setInputValue(`arbeitBetrag${number}`, row.betrag || "");
-    setInputValue(`arbeitZahlungsart${number}`, row.zahlungsart || "Barzahlung");
-  });
-}
-
-function fillPrivateFuelRows(rows = []) {
-  rows.slice(0, 10).forEach((row, index) => {
-    const number = index + 1;
-    setInputValue(`privatDatum${number}`, row.datum || "");
-    setInputValue(`privatBemerkung${number}`, row.bemerkung || "");
-    setInputValue(`privatBetrag${number}`, row.betrag || "");
+function fillAmountRows(rows = [], addRow, amountKey = "betrag") {
+  rows.forEach((row) => {
+    if (readNumber(String(row[amountKey] || "")) > 0) {
+      addRow(row[amountKey]);
+    }
   });
 }
 
 function fillDeductionRows(rows = []) {
-  rows.slice(0, 10).forEach((row, index) => {
-    const number = index + 1;
-    setInputValue(`abzugBezeichnung${number}`, row.bezeichnung || "");
-    setInputValue(`abzugBetrag${number}`, row.betrag || "");
+  rows.forEach((row) => {
+    if ((row.bezeichnung || "").trim() || readNumber(String(row.betrag || "")) > 0) {
+      addDeductionRow(row);
+    }
   });
 }
 
@@ -503,14 +512,22 @@ function loadMonthIntoForm(month) {
   setInputValue("fahreranteil", month.fahreranteil || "");
   setInputValue("heinrikaPauschale", month.schulfahrt_pauschale || "");
 
-  buildWorkFuelRows();
-  buildPrivateFuelRows();
-  buildDeductionRows();
+  document.getElementById("workFuelRows").innerHTML = "";
+  document.getElementById("privateFuelRows").innerHTML = "";
+  document.getElementById("deductionRows").innerHTML = "";
+  workFuelRowCount = 0;
+  privateFuelRowCount = 0;
+  deductionRowCount = 0;
+
+  fillAmountRows(month.benzin_arbeit || [], addWorkFuelRow);
+  fillAmountRows(month.benzin_privat || [], addPrivateFuelRow);
+  fillDeductionRows(month.abzuege || []);
+  if (workFuelRowCount === 0) addWorkFuelRow();
+  if (privateFuelRowCount === 0) addPrivateFuelRow();
+  if (deductionRowCount === 0) addDeductionRow();
+
   buildHeinrikaRows(month.schulfahrt || []);
   fillWeeklyRows(month.wochenumsaetze || []);
-  fillWorkFuelRows(month.benzin_arbeit || []);
-  fillPrivateFuelRows(month.benzin_privat || []);
-  fillDeductionRows(month.abzuege || []);
 
   lastCalculatedResult = month.calculated_result || null;
   if (lastCalculatedResult) {
@@ -529,7 +546,7 @@ async function loadSelectedMonth(event) {
   event?.preventDefault();
 
   const select = document.getElementById("savedMonthSelect");
-  if (!select.value) {
+  if (!select?.value) {
     showStorageStatus("Bitte einen gespeicherten Monat auswählen.");
     return;
   }
@@ -552,7 +569,7 @@ async function deleteSelectedMonth(event) {
   event?.preventDefault();
 
   const select = document.getElementById("savedMonthSelect");
-  if (!select.value) {
+  if (!select?.value) {
     showStorageStatus("Bitte einen gespeicherten Monat auswählen.");
     return;
   }
@@ -632,20 +649,24 @@ function onInput(id, eventName, handler) {
 }
 
 function initializeApp() {
-  buildWorkFuelRows();
-  buildPrivateFuelRows();
+  initializeTheme();
+  resetOptionalRows();
   initializeDateControls();
   buildHeinrikaRows();
-  buildDeductionRows();
   refreshSavedMonths();
 
+  onClick("themeToggle", toggleTheme);
   onInput("monthSelect", "change", () => buildHeinrikaRows());
   onInput("yearInput", "input", () => buildHeinrikaRows());
+  onClick("addWorkFuelButton", () => addWorkFuelRow());
+  onClick("addPrivateFuelButton", () => addPrivateFuelRow());
+  onClick("addDeductionButton", () => addDeductionRow());
   onClick("saveMonthButton", saveCurrentMonth);
   onClick("loadMonthButton", loadSelectedMonth);
   onClick("deleteMonthButton", deleteSelectedMonth);
   onInput("statementForm", "submit", calculateStatement);
   onClick("calculateButton", calculateStatement);
+  onClick("stickyCalculateButton", calculateStatement);
   onClick("pdfButton", downloadPdf);
 }
 
@@ -654,5 +675,3 @@ if (document.readyState === "loading") {
 } else {
   initializeApp();
 }
-
-
