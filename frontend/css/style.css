@@ -198,13 +198,13 @@ select:focus {
 }
 
 .scroll-list {
-  max-height: 380px;
-  overflow: auto;
-  padding-right: 6px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .tall-list {
-  max-height: 420px;
+  max-height: none;
 }
 
 .scroll-list::-webkit-scrollbar {
@@ -538,7 +538,7 @@ select:focus {
 
   .scroll-list,
   .tall-list {
-    max-height: 430px;
+    max-height: none;
   }
 
   .entry-list {

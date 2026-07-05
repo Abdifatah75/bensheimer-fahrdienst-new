@@ -50,9 +50,8 @@ function buildWorkFuelRows() {
         ${createField("Betrag (€)", `<input type="number" name="arbeitBetrag${number}" step="0.01" />`)}
         ${createField("Zahlungsart", `
           <select name="arbeitZahlungsart${number}">
-            <option>Bar</option>
-            <option>Karte</option>
-            <option>Firma</option>
+            <option>Barzahlung</option>
+            <option>Privat</option>
           </select>
         `)}
       </article>
@@ -349,7 +348,11 @@ function showPdfError() {
 }
 
 function showStorageStatus(message) {
-  document.getElementById("storageStatus").textContent = message;
+  const status = document.getElementById("storageStatus");
+
+  if (status) {
+    status.textContent = message;
+  }
 }
 
 function filenameFromResponse(response) {
@@ -360,10 +363,12 @@ function filenameFromResponse(response) {
 }
 
 async function calculateStatement(event) {
-  event.preventDefault();
+  event?.preventDefault();
 
   const button = document.getElementById("calculateButton");
-  button.disabled = true;
+  if (button) {
+    button.disabled = true;
+  }
 
   try {
     const response = await fetch(API_URL, {
@@ -380,14 +385,21 @@ async function calculateStatement(event) {
 
     renderResult(await response.json());
   } catch (error) {
+    console.error("Calculate API failed", error);
     showApiError();
   } finally {
-    button.disabled = false;
+    if (button) {
+      button.disabled = false;
+    }
   }
 }
 
 async function refreshSavedMonths(selectedId = "") {
   const select = document.getElementById("savedMonthSelect");
+
+  if (!select) {
+    return;
+  }
 
   try {
     const response = await fetch(MONTHS_URL);
@@ -412,10 +424,12 @@ async function refreshSavedMonths(selectedId = "") {
 }
 
 async function saveCurrentMonth(event) {
-  event.preventDefault();
+  event?.preventDefault();
 
   const button = document.getElementById("saveMonthButton");
-  button.disabled = true;
+  if (button) {
+    button.disabled = true;
+  }
 
   try {
     const response = await fetch(MONTH_SAVE_URL, {
@@ -439,7 +453,9 @@ async function saveCurrentMonth(event) {
   } catch (error) {
     showStorageStatus("Monat konnte nicht gespeichert werden.");
   } finally {
-    button.disabled = false;
+    if (button) {
+      button.disabled = false;
+    }
   }
 }
 
@@ -459,7 +475,7 @@ function fillWorkFuelRows(rows = []) {
     setInputValue(`arbeitDatum${number}`, row.datum || "");
     setInputValue(`arbeitBemerkung${number}`, row.bemerkung || "");
     setInputValue(`arbeitBetrag${number}`, row.betrag || "");
-    setInputValue(`arbeitZahlungsart${number}`, row.zahlungsart || "Bar");
+    setInputValue(`arbeitZahlungsart${number}`, row.zahlungsart || "Barzahlung");
   });
 }
 
@@ -510,7 +526,7 @@ function loadMonthIntoForm(month) {
 }
 
 async function loadSelectedMonth(event) {
-  event.preventDefault();
+  event?.preventDefault();
 
   const select = document.getElementById("savedMonthSelect");
   if (!select.value) {
@@ -533,7 +549,7 @@ async function loadSelectedMonth(event) {
 }
 
 async function deleteSelectedMonth(event) {
-  event.preventDefault();
+  event?.preventDefault();
 
   const select = document.getElementById("savedMonthSelect");
   if (!select.value) {
@@ -558,10 +574,12 @@ async function deleteSelectedMonth(event) {
 }
 
 async function downloadPdf(event) {
-  event.preventDefault();
+  event?.preventDefault();
 
   const button = document.getElementById("pdfButton");
-  button.disabled = true;
+  if (button) {
+    button.disabled = true;
+  }
 
   try {
     const response = await fetch(PDF_URL, {
@@ -588,25 +606,53 @@ async function downloadPdf(event) {
     URL.revokeObjectURL(url);
     document.getElementById("errorMessage").hidden = true;
   } catch (error) {
+    console.error("PDF API failed", error);
     showPdfError();
   } finally {
-    button.disabled = false;
+    if (button) {
+      button.disabled = false;
+    }
   }
 }
 
-buildWorkFuelRows();
-buildPrivateFuelRows();
-initializeDateControls();
-buildHeinrikaRows();
-buildDeductionRows();
-refreshSavedMonths();
+function onClick(id, handler) {
+  const element = document.getElementById(id);
 
-document.getElementById("monthSelect").addEventListener("change", () => buildHeinrikaRows());
-document.getElementById("yearInput").addEventListener("input", () => buildHeinrikaRows());
-document.getElementById("saveMonthButton").addEventListener("click", saveCurrentMonth);
-document.getElementById("loadMonthButton").addEventListener("click", loadSelectedMonth);
-document.getElementById("deleteMonthButton").addEventListener("click", deleteSelectedMonth);
-document.getElementById("statementForm").addEventListener("submit", calculateStatement);
-document.getElementById("calculateButton").addEventListener("click", calculateStatement);
-document.getElementById("pdfButton").addEventListener("click", downloadPdf);
+  if (element) {
+    element.addEventListener("click", handler);
+  }
+}
+
+function onInput(id, eventName, handler) {
+  const element = document.getElementById(id);
+
+  if (element) {
+    element.addEventListener(eventName, handler);
+  }
+}
+
+function initializeApp() {
+  buildWorkFuelRows();
+  buildPrivateFuelRows();
+  initializeDateControls();
+  buildHeinrikaRows();
+  buildDeductionRows();
+  refreshSavedMonths();
+
+  onInput("monthSelect", "change", () => buildHeinrikaRows());
+  onInput("yearInput", "input", () => buildHeinrikaRows());
+  onClick("saveMonthButton", saveCurrentMonth);
+  onClick("loadMonthButton", loadSelectedMonth);
+  onClick("deleteMonthButton", deleteSelectedMonth);
+  onInput("statementForm", "submit", calculateStatement);
+  onClick("calculateButton", calculateStatement);
+  onClick("pdfButton", downloadPdf);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeApp);
+} else {
+  initializeApp();
+}
+
 
