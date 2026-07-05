@@ -27,6 +27,7 @@ const weekdayNames = [
   "Samstag",
 ];
 let lastCalculatedResult = null;
+let weekRowCount = 0;
 let workFuelRowCount = 0;
 let privateFuelRowCount = 0;
 let deductionRowCount = 0;
@@ -95,6 +96,34 @@ function toggleTheme() {
   setTheme(document.body.dataset.theme === "light" ? "dark" : "light");
 }
 
+function addWeeklyRow(row = {}) {
+  const container = document.getElementById("weeklyRows");
+  if (!container) return;
+
+  weekRowCount += 1;
+  const number = weekRowCount;
+  container.insertAdjacentHTML(
+    "beforeend",
+    `
+      <article class="entry-row weekly-row">
+        <strong>Woche ${number}</strong>
+        ${createField("Woche / Zeitraum", `<input type="text" name="woche${number}Zeitraum" value="${row.zeitraum || `Woche ${number}`}" />`)}
+        ${createField("Umsatz mit Trinkgeld (€)", `<input type="number" name="woche${number}Umsatz" step="0.01" value="${row.umsatz_mit_trinkgeld || ""}" />`)}
+        ${createField("Trinkgeld (€)", `<input type="number" name="woche${number}Trinkgeld" step="0.01" value="${row.trinkgeld || ""}" />`)}
+        ${createField("Barzahlung (€)", `<input type="number" name="woche${number}Barzahlung" step="0.01" value="${row.barzahlung || ""}" />`)}
+      </article>
+    `,
+  );
+}
+
+function resetWeeklyRows() {
+  const container = document.getElementById("weeklyRows");
+  if (!container) return;
+
+  weekRowCount = 0;
+  container.innerHTML = "";
+  addWeeklyRow();
+}
 function addWorkFuelRow(value = "") {
   const container = document.getElementById("workFuelRows");
   if (!container) return;
@@ -289,7 +318,7 @@ function collectPayload() {
     jahr: readMoney(formData, "jahr"),
     fahreranteil: readMoney(formData, "fahreranteil"),
     schulfahrt_pauschale: readMoney(formData, "heinrikaPauschale"),
-    wochenumsaetze: Array.from({ length: 5 }, (_, index) => {
+    wochenumsaetze: Array.from(document.querySelectorAll("#weeklyRows .weekly-row")).map((row, index) => {
       const number = index + 1;
 
       return {
@@ -480,13 +509,26 @@ async function saveCurrentMonth(event) {
 }
 
 function fillWeeklyRows(rows = []) {
-  rows.slice(0, 5).forEach((row, index) => {
-    const number = index + 1;
-    setInputValue(`woche${number}Zeitraum`, row.zeitraum || `Woche ${number}`);
-    setInputValue(`woche${number}Umsatz`, row.umsatz_mit_trinkgeld || "");
-    setInputValue(`woche${number}Trinkgeld`, row.trinkgeld || "");
-    setInputValue(`woche${number}Barzahlung`, row.barzahlung || "");
+  const container = document.getElementById("weeklyRows");
+  if (!container) return;
+
+  weekRowCount = 0;
+  container.innerHTML = "";
+
+  rows.forEach((row) => {
+    const hasValue = (row.zeitraum || "").trim()
+      || readNumber(String(row.umsatz_mit_trinkgeld || "")) > 0
+      || readNumber(String(row.trinkgeld || "")) > 0
+      || readNumber(String(row.barzahlung || "")) > 0;
+
+    if (hasValue) {
+      addWeeklyRow(row);
+    }
   });
+
+  if (weekRowCount === 0) {
+    addWeeklyRow();
+  }
 }
 
 function fillAmountRows(rows = [], addRow, amountKey = "betrag") {
@@ -512,13 +554,16 @@ function loadMonthIntoForm(month) {
   setInputValue("fahreranteil", month.fahreranteil || "");
   setInputValue("heinrikaPauschale", month.schulfahrt_pauschale || "");
 
+  document.getElementById("weeklyRows").innerHTML = "";
   document.getElementById("workFuelRows").innerHTML = "";
   document.getElementById("privateFuelRows").innerHTML = "";
   document.getElementById("deductionRows").innerHTML = "";
+  weekRowCount = 0;
   workFuelRowCount = 0;
   privateFuelRowCount = 0;
   deductionRowCount = 0;
 
+  fillWeeklyRows(month.wochenumsaetze || []);
   fillAmountRows(month.benzin_arbeit || [], addWorkFuelRow);
   fillAmountRows(month.benzin_privat || [], addPrivateFuelRow);
   fillDeductionRows(month.abzuege || []);
@@ -527,7 +572,6 @@ function loadMonthIntoForm(month) {
   if (deductionRowCount === 0) addDeductionRow();
 
   buildHeinrikaRows(month.schulfahrt || []);
-  fillWeeklyRows(month.wochenumsaetze || []);
 
   lastCalculatedResult = month.calculated_result || null;
   if (lastCalculatedResult) {
@@ -650,6 +694,7 @@ function onInput(id, eventName, handler) {
 
 function initializeApp() {
   initializeTheme();
+  resetWeeklyRows();
   resetOptionalRows();
   initializeDateControls();
   buildHeinrikaRows();
@@ -658,6 +703,7 @@ function initializeApp() {
   onClick("themeToggle", toggleTheme);
   onInput("monthSelect", "change", () => buildHeinrikaRows());
   onInput("yearInput", "input", () => buildHeinrikaRows());
+  onClick("addWeekButton", () => addWeeklyRow());
   onClick("addWorkFuelButton", () => addWorkFuelRow());
   onClick("addPrivateFuelButton", () => addPrivateFuelRow());
   onClick("addDeductionButton", () => addDeductionRow());
@@ -675,3 +721,5 @@ if (document.readyState === "loading") {
 } else {
   initializeApp();
 }
+
+

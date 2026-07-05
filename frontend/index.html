@@ -66,78 +66,10 @@
       <section class="card primary-card">
         <div class="section-heading">
           <h3>Wochenumsätze</h3>
-          <span>Pflichtbereich</span>
+          <span>Eine Woche starten, bei Bedarf erweitern</span>
         </div>
-
-        <div class="entry-list weekly-list">
-          <article class="entry-row weekly-row">
-            <strong>Woche 1</strong>
-            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche1Zeitraum" /></label>
-            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche1Umsatz" step="0.01" /></label>
-            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche1Trinkgeld" step="0.01" /></label>
-            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche1Barzahlung" step="0.01" /></label>
-          </article>
-          <article class="entry-row weekly-row">
-            <strong>Woche 2</strong>
-            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche2Zeitraum" /></label>
-            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche2Umsatz" step="0.01" /></label>
-            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche2Trinkgeld" step="0.01" /></label>
-            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche2Barzahlung" step="0.01" /></label>
-          </article>
-          <article class="entry-row weekly-row">
-            <strong>Woche 3</strong>
-            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche3Zeitraum" /></label>
-            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche3Umsatz" step="0.01" /></label>
-            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche3Trinkgeld" step="0.01" /></label>
-            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche3Barzahlung" step="0.01" /></label>
-          </article>
-          <article class="entry-row weekly-row">
-            <strong>Woche 4</strong>
-            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche4Zeitraum" /></label>
-            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche4Umsatz" step="0.01" /></label>
-            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche4Trinkgeld" step="0.01" /></label>
-            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche4Barzahlung" step="0.01" /></label>
-          </article>
-          <article class="entry-row weekly-row">
-            <strong>Woche 5</strong>
-            <label class="field"><span>Woche / Zeitraum</span><input type="text" name="woche5Zeitraum" /></label>
-            <label class="field"><span>Umsatz mit Trinkgeld (€)</span><input type="number" name="woche5Umsatz" step="0.01" /></label>
-            <label class="field"><span>Trinkgeld (€)</span><input type="number" name="woche5Trinkgeld" step="0.01" /></label>
-            <label class="field"><span>Barzahlung (€)</span><input type="number" name="woche5Barzahlung" step="0.01" /></label>
-          </article>
-        </div>
-      </section>
-
-      <button class="calculate-button" type="button" id="calculateButton">
-        <span aria-hidden="true">▦</span>
-        Abrechnung berechnen
-      </button>
-
-      <section class="result-section" id="resultSection" aria-live="polite" hidden>
-        <div class="error-message" id="errorMessage" hidden></div>
-
-        <div class="net-card">
-          <span id="resultMeta">Ergebnis</span>
-          <h3>Nettolohn</h3>
-          <strong id="nettolohnValue">0,00 €</strong>
-        </div>
-
-        <div class="card result-card">
-          <div class="section-heading">
-            <h3>Aufschlüsselung</h3>
-            <span>Berechnete Werte</span>
-          </div>
-
-          <dl class="breakdown" id="breakdownList"></dl>
-
-          <div class="pdf-area">
-            <div>
-              <strong>PDF Export</strong>
-              <p>Erstellt die monatliche Fahrerabrechnung als PDF.</p>
-            </div>
-            <button type="button" id="pdfButton">PDF erstellen</button>
-          </div>
-        </div>
+        <div class="entry-list weekly-list" id="weeklyRows"></div>
+        <button class="secondary-button" type="button" id="addWeekButton">Woche hinzufügen</button>
       </section>
 
       <section class="card optional-card">
@@ -191,6 +123,38 @@
           </div>
           <p class="storage-status" id="storageStatus" aria-live="polite"></p>
         </details>
+      </section>
+
+      <button class="calculate-button" type="button" id="calculateButton">
+        <span aria-hidden="true">▦</span>
+        Abrechnung berechnen
+      </button>
+
+      <section class="result-section" id="resultSection" aria-live="polite" hidden>
+        <div class="error-message" id="errorMessage" hidden></div>
+
+        <div class="net-card">
+          <span id="resultMeta">Ergebnis</span>
+          <h3>Nettolohn</h3>
+          <strong id="nettolohnValue">0,00 €</strong>
+        </div>
+
+        <div class="card result-card">
+          <div class="section-heading">
+            <h3>Aufschlüsselung</h3>
+            <span>Berechnete Werte</span>
+          </div>
+
+          <dl class="breakdown" id="breakdownList"></dl>
+
+          <div class="pdf-area">
+            <div>
+              <strong>PDF Export</strong>
+              <p>Erstellt die monatliche Fahrerabrechnung als PDF.</p>
+            </div>
+            <button type="button" id="pdfButton">PDF erstellen</button>
+          </div>
+        </div>
       </section>
     </form>
   </main>
